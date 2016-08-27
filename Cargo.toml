@@ -1,0 +1,12 @@
+[package]
+name = "qik-rs"
+description = "Rust library for the Pololu qik dual serial motor controllers"
+version = "1.0.0"
+authors = ["Andy Grove <andygrove73@gmail.com>"]
+homepage = "https://github.com/andygrove/rust-qik"
+documentation = "https://github.com/andygrove/rust-qik"
+repository = "https://github.com/andygrove/rust-qik"
+license = "MIT/Apache-2.0"
+
+[dependencies]
+serial = "0.3.4"
