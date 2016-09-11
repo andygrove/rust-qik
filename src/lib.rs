@@ -113,7 +113,7 @@ fn get_config_param_byte(p: ConfigParam) -> u8 {
 
 pub struct Qik {
     device: String,
-//    reset_pin: Pin,
+    reset_pin: Pin,
     port: TTYPort,
 }
 
@@ -134,19 +134,17 @@ impl Qik {
 
         port.set_timeout(Duration::from_millis(5000)).unwrap();
 
-        Qik { device: device, /*reset_pin: Pin::new(reset_pin),*/ port: port }
+        Qik { device: device, reset_pin: Pin::new(reset_pin), port: port }
     }
 
     pub fn init(&mut self) {
-//        self.reset_pin.with_exported(|| {
-//            self.reset_pin.set_value(0).unwrap();
-//            self.reset_pin.set_direction(Direction::Out).unwrap();
-//            thread::sleep(Duration::from_millis(1));
-//            self.reset_pin.set_direction(Direction::In).unwrap();
-//            thread::sleep(Duration::from_millis(10));
-//        });
+        //NOTE: the reset pin must be exported first from the command line
+        self.reset_pin.set_value(0).unwrap();
+        self.reset_pin.set_direction(Direction::Out).unwrap();
+        thread::sleep(Duration::from_millis(1));
+        self.reset_pin.set_direction(Direction::In).unwrap();
+        thread::sleep(Duration::from_millis(10));
 
-        // begin(speed); //TODO: do we need to set up serial port here?
         self.write_byte(0xAA);
     }
 
