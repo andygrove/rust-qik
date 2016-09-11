@@ -1,15 +1,17 @@
 use std::thread::sleep_ms;
 use std::time::Duration;
 
-//extern crate sysfs_gpio;
-//
-//use sysfs_gpio::{Direction, Pin};
+extern crate sysfs_gpio;
+
+use sysfs_gpio::{Direction, Pin};
 
 extern crate serial;
 
 use std::io::prelude::*;
 use self::serial::prelude::*;
 use self::serial::posix::TTYPort;
+
+use std::thread;
 
 #[allow(non_camel_case_types)]
 pub enum Motor {
@@ -112,14 +114,13 @@ fn get_config_param_byte(p: ConfigParam) -> u8 {
 
 
 pub struct Qik {
-    device: String,
     reset_pin: Pin,
     port: TTYPort,
 }
 
 impl Qik {
 
-    pub fn new(device: String, reset_pin: u8) -> Self {
+    pub fn new(device: String, reset_pin: u64) -> Self {
 
         let mut port = serial::open(&device).unwrap();
 
@@ -134,7 +135,7 @@ impl Qik {
 
         port.set_timeout(Duration::from_millis(5000)).unwrap();
 
-        Qik { device: device, reset_pin: Pin::new(reset_pin), port: port }
+        Qik { reset_pin: Pin::new(reset_pin), port: port }
     }
 
     pub fn init(&mut self) {
