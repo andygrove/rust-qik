@@ -120,9 +120,9 @@ pub struct Qik {
 
 impl Qik {
 
-    pub fn new(device: String, reset_pin: u64) -> Self {
+    pub fn new(device: String, reset_pin: u64) -> Result<Self, serial::Error> {
 
-        let mut port = serial::open(&device).unwrap();
+        let mut port = try!(serial::open(&device));
 
         port.reconfigure(&|settings| {
             settings.set_baud_rate(serial::Baud9600).unwrap();
@@ -135,7 +135,7 @@ impl Qik {
 
         port.set_timeout(Duration::from_millis(5000)).unwrap();
 
-        Qik { reset_pin: Pin::new(reset_pin), port: port }
+        Ok(Qik { reset_pin: Pin::new(reset_pin), port: port })
     }
 
     pub fn init(&mut self) {
