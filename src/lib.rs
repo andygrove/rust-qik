@@ -150,22 +150,22 @@ impl Qik {
         Ok(())
     }
 
-    pub fn get_firmware_version(&mut self) -> u8 {
+    pub fn get_firmware_version(&mut self) -> Result<u8, serial::Error> {
         let buf: Vec<u8> = vec![ get_cmd_byte(Command::GET_FIRMWARE_VERSION) ];
-        self.write(&buf);
+        try!(self.write(&buf));
         self.read_byte()
     }
 
-    pub fn get_config(&mut self, p: ConfigParam) -> u8 {
+    pub fn get_config(&mut self, p: ConfigParam) -> Result<u8, serial::Error> {
         let cmd: Vec<u8> = vec![
             get_cmd_byte(Command::GET_CONFIGURATION_PARAMETER),
             get_config_param_byte(p)
         ];
-        self.write(&cmd);
+        try!(self.write(&cmd));
         self.read_byte()
     }
 
-    pub fn set_config(&mut self, p: ConfigParam, v: u8) -> u8 {
+    pub fn set_config(&mut self, p: ConfigParam, v: u8) -> Result<u8, serial::Error> {
         let cmd: Vec<u8> = vec![
             get_cmd_byte(Command::SET_CONFIGURATION_PARAMETER),
             get_config_param_byte(p),
@@ -173,17 +173,17 @@ impl Qik {
             0x55,
             0x2A
         ];
-        self.write(&cmd);
+        try!(self.write(&cmd));
         self.read_byte()
     }
 
-    pub fn get_error(&mut self) -> u8 {
+    pub fn get_error(&mut self) -> Result<u8, serial::Error> {
         let buf: Vec<u8> = vec![ get_cmd_byte(Command::GET_ERROR_BYTE) ];
-        self.write(&buf);
+        try!(self.write(&buf));
         self.read_byte()
     }
 
-    pub fn set_speed(&mut self, m: Motor, speed: i8) {
+    pub fn set_speed(&mut self, m: Motor, speed: i8) -> Result<(), serial::Error> {
         if speed >= 0 {
             // forward
             let cmd: Vec<u8> = vec![
@@ -193,7 +193,7 @@ impl Qik {
                 }),
                 speed as u8
             ];
-            self.write(&cmd);
+            self.write(&cmd)
         } else {
             // reverse
             let cmd: Vec<u8> = vec![
@@ -203,21 +203,21 @@ impl Qik {
                 }),
                 (0-speed) as u8
             ];
-            self.write(&cmd);
+            self.write(&cmd)
         }
     }
 
     /// 2s9v1 only
-    pub fn coast(&mut self, m: Motor) {
+    pub fn coast(&mut self, m: Motor) -> Result<(), serial::Error> {
         let buf: Vec<u8> = vec![ get_cmd_byte(match m {
             Motor::M0 => Command::MOTOR_M0_COAST,
             Motor::M1 => Command::MOTOR_M1_COAST
         })];
-        self.write(&buf);
+        self.write(&buf)
     }
 
     /// 2s12v10 only
-    pub fn set_brake(&mut self, m: Motor, v: u8) {
+    pub fn set_brake(&mut self, m: Motor, v: u8) -> Result<(), serial::Error> {
         assert!(v<128);
         let cmd: Vec<u8> = vec![
             get_cmd_byte(match m {
@@ -226,11 +226,11 @@ impl Qik {
             }),
             v
         ];
-        self.write(&cmd);
+        self.write(&cmd)
     }
 
     /// 2s12v10 only
-    pub fn get_speed(&mut self, m: Motor) -> u8 {
+    pub fn get_speed(&mut self, m: Motor) -> Result<u8, serial::Error> {
         self.write_byte(get_cmd_byte(match m {
             Motor::M0 => Command::GET_MOTOR_M0_SPEED,
             Motor::M1 => Command::GET_MOTOR_M1_SPEED
@@ -239,42 +239,45 @@ impl Qik {
     }
 
     /// 2s12v10 only
-    pub fn get_current(&mut self, m: Motor) -> u8 {
+    pub fn get_current(&mut self, m: Motor) -> Result<u8, serial::Error> {
         let buf: Vec<u8> = vec![ get_cmd_byte(match m {
             Motor::M0 => Command::GET_MOTOR_M0_CURRENT,
             Motor::M1 => Command::GET_MOTOR_M1_CURRENT
         })];
-        self.write(&buf);
+        try!(self.write(&buf));
         self.read_byte()
     }
 
     /// 2s12v10 only
-    pub fn get_current_milliamps(&mut self, m: Motor) -> u32 {
-        self.get_current(m) as u32 * 150
+    pub fn get_current_milliamps(&mut self, m: Motor) -> Result<u32, serial::Error> {
+        let c = try!(self.get_current(m));
+        Ok(c as u32 * 150)
     }
 
     /// writes a single byte to the serial port
-    fn write_byte(&mut self, b: u8) {
+    fn write_byte(&mut self, b: u8) -> Result<(), serial::Error> {
         let buf: Vec<u8> = vec![ b ];
-        self.write(&buf);
+        try!(self.write(&buf));
+        Ok(())
     }
 
     /// writes a byte buffer to the serial port
-    fn write(&mut self, buf: &[u8]) {
-        self.port.write_all(buf).unwrap();
+    fn write(&mut self, buf: &[u8]) -> Result<(), serial::Error> {
+        try!(self.port.write_all(buf));
+        Ok(())
     }
 
     /// reads a single bytes from the serial port
-    fn read_byte(&mut self) -> u8 {
-        let buf = self.read(1);
-        buf[0]
+    fn read_byte(&mut self) -> Result<u8, serial::Error> {
+        let buf = try!(self.read(1));
+        Ok(buf[0])
     }
 
     /// reads varible number of bytes from the serial port
-    fn read(&mut self, n: usize) -> Vec<u8> {
+    fn read(&mut self, n: usize) -> Result<Vec<u8>, serial::Error> {
         let mut buf = vec![0_u8; n];
-        self.port.read_exact(buf.as_mut()).unwrap();
-        buf
+        try!(self.port.read_exact(buf.as_mut()));
+        Ok(buf)
     }
 
 }
