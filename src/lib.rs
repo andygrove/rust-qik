@@ -138,15 +138,16 @@ impl Qik {
         Ok(Qik { reset_pin: Pin::new(reset_pin), port: port })
     }
 
-    pub fn init(&mut self) {
+    pub fn init(&mut self) -> Result<(), sysfs_gpio::Error> {
         //NOTE: the reset pin must be exported first from the command line
-        self.reset_pin.set_value(0).unwrap();
-        self.reset_pin.set_direction(Direction::Out).unwrap();
+        try!(self.reset_pin.set_value(0));
+        try!(self.reset_pin.set_direction(Direction::Out));
         thread::sleep(Duration::from_millis(1));
-        self.reset_pin.set_direction(Direction::In).unwrap();
+        try!(self.reset_pin.set_direction(Direction::In));
         thread::sleep(Duration::from_millis(10));
 
         self.write_byte(0xAA);
+        Ok(())
     }
 
     pub fn get_firmware_version(&mut self) -> u8 {
