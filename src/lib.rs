@@ -1,4 +1,5 @@
 use std::convert::From;
+use std::io;
 use std::time::Duration;
 
 extern crate sysfs_gpio;
@@ -15,7 +16,8 @@ use std::thread;
 
 pub enum QikError {
     SerialErr(serial::Error),
-    GpioErr(sysfs_gpio::Error)
+    GpioErr(sysfs_gpio::Error),
+    IoErr(io::Error),
 }
 
 impl From<serial::Error> for QikError {
@@ -27,6 +29,12 @@ impl From<serial::Error> for QikError {
 impl From<sysfs_gpio::Error> for QikError {
     fn from(e: sysfs_gpio::Error) -> Self {
         QikError::GpioErr(e)
+    }
+}
+
+impl From<io::Error> for QikError {
+    fn from(e: io::Error) -> Self {
+        QikError::IoErr(e)
     }
 }
 
@@ -167,13 +175,13 @@ impl Qik {
         Ok(())
     }
 
-    pub fn get_firmware_version(&mut self) -> Result<u8, serial::Error> {
+    pub fn get_firmware_version(&mut self) -> Result<u8, QikError> {
         let buf: Vec<u8> = vec![ get_cmd_byte(Command::GET_FIRMWARE_VERSION) ];
         try!(self.write(&buf));
         self.read_byte()
     }
 
-    pub fn get_config(&mut self, p: ConfigParam) -> Result<u8, serial::Error> {
+    pub fn get_config(&mut self, p: ConfigParam) -> Result<u8, QikError> {
         let cmd: Vec<u8> = vec![
             get_cmd_byte(Command::GET_CONFIGURATION_PARAMETER),
             get_config_param_byte(p)
@@ -182,7 +190,7 @@ impl Qik {
         self.read_byte()
     }
 
-    pub fn set_config(&mut self, p: ConfigParam, v: u8) -> Result<u8, serial::Error> {
+    pub fn set_config(&mut self, p: ConfigParam, v: u8) -> Result<u8, QikError> {
         let cmd: Vec<u8> = vec![
             get_cmd_byte(Command::SET_CONFIGURATION_PARAMETER),
             get_config_param_byte(p),
@@ -194,13 +202,13 @@ impl Qik {
         self.read_byte()
     }
 
-    pub fn get_error(&mut self) -> Result<u8, serial::Error> {
+    pub fn get_error(&mut self) -> Result<u8, QikError> {
         let buf: Vec<u8> = vec![ get_cmd_byte(Command::GET_ERROR_BYTE) ];
         try!(self.write(&buf));
         self.read_byte()
     }
 
-    pub fn set_speed(&mut self, m: Motor, speed: i8) -> Result<(), serial::Error> {
+    pub fn set_speed(&mut self, m: Motor, speed: i8) -> Result<(), QikError> {
         if speed >= 0 {
             // forward
             let cmd: Vec<u8> = vec![
@@ -225,7 +233,7 @@ impl Qik {
     }
 
     /// 2s9v1 only
-    pub fn coast(&mut self, m: Motor) -> Result<(), serial::Error> {
+    pub fn coast(&mut self, m: Motor) -> Result<(), QikError> {
         let buf: Vec<u8> = vec![ get_cmd_byte(match m {
             Motor::M0 => Command::MOTOR_M0_COAST,
             Motor::M1 => Command::MOTOR_M1_COAST
@@ -234,7 +242,7 @@ impl Qik {
     }
 
     /// 2s12v10 only
-    pub fn set_brake(&mut self, m: Motor, v: u8) -> Result<(), serial::Error> {
+    pub fn set_brake(&mut self, m: Motor, v: u8) -> Result<(), QikError> {
         assert!(v<128);
         let cmd: Vec<u8> = vec![
             get_cmd_byte(match m {
@@ -247,7 +255,7 @@ impl Qik {
     }
 
     /// 2s12v10 only
-    pub fn get_speed(&mut self, m: Motor) -> Result<u8, serial::Error> {
+    pub fn get_speed(&mut self, m: Motor) -> Result<u8, QikError> {
         try!(self.write_byte(get_cmd_byte(match m {
             Motor::M0 => Command::GET_MOTOR_M0_SPEED,
             Motor::M1 => Command::GET_MOTOR_M1_SPEED
@@ -256,7 +264,7 @@ impl Qik {
     }
 
     /// 2s12v10 only
-    pub fn get_current(&mut self, m: Motor) -> Result<u8, serial::Error> {
+    pub fn get_current(&mut self, m: Motor) -> Result<u8, QikError> {
         let buf: Vec<u8> = vec![ get_cmd_byte(match m {
             Motor::M0 => Command::GET_MOTOR_M0_CURRENT,
             Motor::M1 => Command::GET_MOTOR_M1_CURRENT
@@ -266,32 +274,32 @@ impl Qik {
     }
 
     /// 2s12v10 only
-    pub fn get_current_milliamps(&mut self, m: Motor) -> Result<u32, serial::Error> {
+    pub fn get_current_milliamps(&mut self, m: Motor) -> Result<u32, QikError> {
         let c = try!(self.get_current(m));
         Ok(c as u32 * 150)
     }
 
     /// writes a single byte to the serial port
-    fn write_byte(&mut self, b: u8) -> Result<(), serial::Error> {
+    fn write_byte(&mut self, b: u8) -> Result<(), QikError> {
         let buf: Vec<u8> = vec![ b ];
         try!(self.write(&buf));
         Ok(())
     }
 
     /// writes a byte buffer to the serial port
-    fn write(&mut self, buf: &[u8]) -> Result<(), serial::Error> {
+    fn write(&mut self, buf: &[u8]) -> Result<(), QikError> {
         try!(self.port.write_all(buf));
         Ok(())
     }
 
     /// reads a single bytes from the serial port
-    fn read_byte(&mut self) -> Result<u8, serial::Error> {
+    fn read_byte(&mut self) -> Result<u8, QikError> {
         let buf = try!(self.read(1));
         Ok(buf[0])
     }
 
     /// reads varible number of bytes from the serial port
-    fn read(&mut self, n: usize) -> Result<Vec<u8>, serial::Error> {
+    fn read(&mut self, n: usize) -> Result<Vec<u8>, QikError> {
         let mut buf = vec![0_u8; n];
         try!(self.port.read_exact(buf.as_mut()));
         Ok(buf)
