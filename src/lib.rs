@@ -14,6 +14,7 @@ use self::serial::posix::TTYPort;
 
 use std::thread;
 
+#[derive(Debug)]
 pub enum QikError {
     SerialErr(serial::Error),
     GpioErr(sysfs_gpio::Error),
