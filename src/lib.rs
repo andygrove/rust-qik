@@ -1,4 +1,4 @@
-use std::thread::sleep_ms;
+use std::convert::From;
 use std::time::Duration;
 
 extern crate sysfs_gpio;
@@ -12,6 +12,23 @@ use self::serial::prelude::*;
 use self::serial::posix::TTYPort;
 
 use std::thread;
+
+pub enum QikError {
+    SerialErr(serial::Error),
+    GpioErr(sysfs_gpio::Error)
+}
+
+impl From<serial::Error> for QikError {
+    fn from(e: serial::Error) -> Self {
+        QikError::SerialErr(e)
+    }
+}
+
+impl From<sysfs_gpio::Error> for QikError {
+    fn from(e: sysfs_gpio::Error) -> Self {
+        QikError::GpioErr(e)
+    }
+}
 
 #[allow(non_camel_case_types)]
 pub enum Motor {
@@ -35,7 +52,7 @@ pub enum ConfigParam {
     MOTOR_M1_CURRENT_LIMIT_RESPONSE, //11,
 }
 
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_types, dead_code)]
 enum Command {
     GET_FIRMWARE_VERSION,
     GET_ERROR_BYTE,
@@ -120,9 +137,9 @@ pub struct Qik {
 
 impl Qik {
 
-    pub fn new(device: String, reset_pin: u64) -> Result<Self, serial::Error> {
+    pub fn new(device: String, reset_pin: u64) -> Result<Self, QikError> {
 
-        let mut port = try!(serial::open(&device));
+        let mut port = try!(serial::open(&device).map_err(QikError::SerialErr));
 
         port.reconfigure(&|settings| {
             settings.set_baud_rate(serial::Baud9600).unwrap();
@@ -138,7 +155,7 @@ impl Qik {
         Ok(Qik { reset_pin: Pin::new(reset_pin), port: port })
     }
 
-    pub fn init(&mut self) -> Result<(), sysfs_gpio::Error> {
+    pub fn init(&mut self) -> Result<(), QikError> {
         //NOTE: the reset pin must be exported first from the command line
         try!(self.reset_pin.set_value(0));
         try!(self.reset_pin.set_direction(Direction::Out));
@@ -146,7 +163,7 @@ impl Qik {
         try!(self.reset_pin.set_direction(Direction::In));
         thread::sleep(Duration::from_millis(10));
 
-        self.write_byte(0xAA);
+        try!(self.write_byte(0xAA));
         Ok(())
     }
 
@@ -231,10 +248,10 @@ impl Qik {
 
     /// 2s12v10 only
     pub fn get_speed(&mut self, m: Motor) -> Result<u8, serial::Error> {
-        self.write_byte(get_cmd_byte(match m {
+        try!(self.write_byte(get_cmd_byte(match m {
             Motor::M0 => Command::GET_MOTOR_M0_SPEED,
             Motor::M1 => Command::GET_MOTOR_M1_SPEED
-        }));
+        })));
         self.read_byte()
     }
 
