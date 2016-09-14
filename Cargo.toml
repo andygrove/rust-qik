@@ -1,7 +1,7 @@
 [package]
 name = "qik"
 description = "Rust library for the Pololu qik dual serial motor controllers"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["Andy Grove <andygrove73@gmail.com>"]
 homepage = "https://github.com/andygrove/rust-qik"
 documentation = "https://github.com/andygrove/rust-qik"
