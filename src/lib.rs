@@ -149,16 +149,16 @@ impl Qik {
 
         let mut port = try!(serial::open(&device).map_err(QikError::SerialErr));
 
-        port.reconfigure(&|settings| {
-            settings.set_baud_rate(serial::Baud9600).unwrap();
+        try!(port.reconfigure(&|settings| {
+            try!(settings.set_baud_rate(serial::Baud9600));
             settings.set_char_size(serial::Bits8);
             settings.set_parity(serial::ParityNone);
             settings.set_stop_bits(serial::Stop1);
             settings.set_flow_control(serial::FlowNone);
             Ok(())
-        }).unwrap();
+        }));
 
-        port.set_timeout(Duration::from_millis(5000)).unwrap();
+        try!(port.set_timeout(Duration::from_millis(5000)));
 
         Ok(Qik { reset_pin: Pin::new(reset_pin), port: port })
     }
