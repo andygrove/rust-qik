@@ -165,14 +165,22 @@ impl Qik {
     }
 
     pub fn init(&mut self) -> Result<(), QikError> {
-        //NOTE: the reset pin must be exported first from the command line
+        if self.reset_pin.is_exported() {
+            try!(self.reset());
+        } else {
+            try!(self.reset_pin.with_exported(|| self.reset()));
+        };
+
+        try!(self.write_byte(0xAA));
+        Ok(())
+    }
+
+    fn reset(&self) -> Result<(), sysfs_gpio::Error> {
         try!(self.reset_pin.set_value(0));
         try!(self.reset_pin.set_direction(Direction::Out));
         thread::sleep(Duration::from_millis(1));
         try!(self.reset_pin.set_direction(Direction::In));
         thread::sleep(Duration::from_millis(10));
-
-        try!(self.write_byte(0xAA));
         Ok(())
     }
 
